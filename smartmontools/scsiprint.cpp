@@ -837,13 +837,19 @@ scsiPrintErrorCounterLog(scsi_device * device)
             ecp = &errCounterArr[k];
             static const char * const pageNames[3] =
                                  {"read:   ", "write:  ", "verify: "};
-            pout("%s%8" PRIu64 " %8" PRIu64 "  %8" PRIu64 "  %8" PRIu64
+            jout("%s%8" PRIu64 " %8" PRIu64 "  %8" PRIu64 "  %8" PRIu64
                  "   %8" PRIu64, pageNames[k], ecp->counter[0],
                  ecp->counter[1], ecp->counter[2], ecp->counter[3],
                  ecp->counter[4]);
             double processed_gb = ecp->counter[5] / 1000000000.0;
-            pout("   %12.3f    %8" PRIu64 "\n", processed_gb,
+            jout("   %12.3f    %8" PRIu64 "\n", processed_gb,
                  ecp->counter[6]);
+	    if (k == 0)
+	        jglb["total_uncorrected_read_errors"] = ecp->counter[6];
+	    else if (k == 1)
+	        jglb["total_uncorrected_write_errors"] = ecp->counter[6];
+	    else
+	        jglb["total_uncorrected_verify_errors"] = ecp->counter[6];
         }
     }
     else
@@ -852,8 +858,10 @@ scsiPrintErrorCounterLog(scsi_device * device)
                 NON_MEDIUM_ERROR_LPAGE, 0, gBuf, LOG_RESP_LEN, 0))) {
         struct scsiNonMediumError nme;
         scsiDecodeNonMediumErrPage(gBuf, &nme);
-        if (nme.gotPC0)
-            pout("\nNon-medium error count: %8" PRIu64 "\n", nme.counterPC0);
+        if (nme.gotPC0) {
+            jout("\nNon-medium error count: %8" PRIu64 "\n", nme.counterPC0);
+            jglb["non_medium_error_count"] = nme.counterPC0;
+	}
         if (nme.gotTFE_H)
             pout("Track following error count [Hitachi]: %8" PRIu64 "\n",
                  nme.counterTFE_H);
@@ -1279,7 +1287,8 @@ scsiPrintSSMedia(scsi_device * device)
                 print_off();
                 return FAILSMART;
             }
-            pout("Percentage used endurance indicator: %d%%\n", ucp[7]);
+            jglb["percentage_used_endurance_indicator"] = ucp[7];
+            jout("Percentage used endurance indicator: %d%%\n", ucp[7]);
         default:        /* ignore other parameter codes */
             break;
         }
